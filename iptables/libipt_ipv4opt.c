@@ -4,6 +4,7 @@
 #include<stdio.h>
 #include<string.h>
 
+
 enum {
     XTTYPE_IPV4OPT = 0,
     XTTYPE_SOFT,
@@ -128,6 +129,22 @@ static const struct xt_option_entry ipv4opts[] = {
         XTOPT_TABLEEND,
 };
 
+static void ipv4opt_print(const void *ip, const struct xt_entry_match *match, int numeric)
+{
+    const struct info_ipv4opt *info = (const struct info_ipv4opt *)match->data;
+    printf("ipv4opt match options:");
+    if(info->ipv4optmask){
+        printf("--opttype ");
+        for(int i = 0; i < sizeof(numtomask)/sizeof(numtomask[0]); i++){
+            if(info->ipv4optmask & numtomask[i].mask){
+                printf("%s,", ipopts[i].name);
+            }
+        }
+    }
+    if(info->soft){
+        printf("--soft\n");
+    }
+}
 
 static struct xtables_match ipv4opt_mt_reg = {
     .name = "ipv4opt",
@@ -137,12 +154,12 @@ static struct xtables_match ipv4opt_mt_reg = {
     .userspacesize = XT_ALIGN(sizeof(struct info_ipv4opt)),
     .help = ipv4opt_help,
     .x6_parse = ipv4opt_parse,
+    .print = ipv4opt_print,
     .x6_options = ipv4opts,
 };
 
 
 void _init(void)
 {
-    fprintf(stdout, "Loading iptables module\n");
     xtables_register_match(&ipv4opt_mt_reg);
 }
