@@ -13,32 +13,41 @@ MODULE_VERSION("1.0");
 struct ip_opt_tlv {
     uint8_t type;
     uint8_t length;
-    uint8_t *data;
+    //if variable length, then data follows
 };
 
-struct ip_opt_list {
-    struct ip_opt_tlv *opt;
-    struct ip_opt_list *next;
-};
+static struct ip_opt_tlv* get_next_option(const struct ip_opt_tlv* ipopt_tlv) {
+
+    // two case in option layout, 1. type 2. type, length and data
+    if(ipopt_tlv->type == IPOPT_EOL || ipopt_tlv->type == IPOPT_NOP) {
+        return (struct ip_opt_tlv*) ((char*) ipopt_tlv + sizeof(uint8_t));
+    }
+ 
+    return (struct ip_opt_tlv*) ((char*) ipopt_tlv + ipopt_tlv->length);    
+}
 
 
-bool ipv4opt_mt(const struct sk_buff *skb, struct xt_action_param *params)
+static bool ipv4opt_mt(const struct sk_buff *skb, struct xt_action_param *params)
 {
     // Dump source and destination IP addresses
     struct iphdr *ip_header = ip_hdr(skb);
-
-
+    // start of IP options
     struct ip_opt_tlv *opt_tlv = (struct ip_opt_tlv*) ((char*) ip_header + sizeof(struct iphdr));
-
-    //Received packets' first IP option type 
-    printk(KERN_INFO "ip type: %d\n", opt_tlv->type);
-
+    // end of IP options
+    struct ip_opt_tlv *end_opt_tlv = (struct ip_opt_tlv*) ((char*) ip_header + (ip_header->ihl * 4));
+    
+    while(opt_tlv != end_opt_tlv) {
+        printk(KERN_INFO "Option type: %d\n", opt_tlv->type);
+        printk(KERN_INFO "Option length: %d\n", opt_tlv->length);
+        opt_tlv = get_next_option(opt_tlv);
+    }
+    
     //params->hotdrop = 1;
 
     return NF_DROP;
 }
 
-const struct xt_match ipv4opt_mt_reg __read_mostly = {
+struct xt_match ipv4opt_mt_reg __read_mostly = {
     .name		= "ipv4opt",
     .revision	= 0,
     .family		= NFPROTO_IPV4,
