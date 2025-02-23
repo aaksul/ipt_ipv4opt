@@ -4,7 +4,6 @@
 #include<stdio.h>
 #include<string.h>
 
-
 enum {
     XTTYPE_IPV4OPT = 0,
     XTTYPE_SOFT,
@@ -30,7 +29,6 @@ static const struct ipopt ipopts[] = {
     {"68", IPOPT_TS},
     {"130", IPOPT_SEC},
     {"131", IPOPT_LSRR},
-    {"136", IPOPT_SATID},
     {"137", IPOPT_SSRR}
 };
 
@@ -43,7 +41,6 @@ static const struct numtomask numtomask[] = {
     {IPOPT_TS, MASK_IP4OPT_TS},
     {IPOPT_SEC, MASK_IP4OPT_SEC},
     {IPOPT_LSRR, MASK_IP4OPT_LSRR},
-    {IPOPT_SATID, MASK_IP4OPT_SATID},
     {IPOPT_SSRR, MASK_IP4OPT_SSRR}
 };
 
