@@ -6,7 +6,7 @@
 #include "ipv4opt_info.h"
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Your Name");
+MODULE_AUTHOR("Alperen Aksu");
 MODULE_DESCRIPTION("A simple Linux kernel module.");
 MODULE_VERSION("1.0");
 
@@ -58,6 +58,11 @@ static struct ip_opt_tlv *get_next_option(const struct ip_opt_tlv *ipopt_tlv)
     return (struct ip_opt_tlv *)((char *)ipopt_tlv + ipopt_tlv->length);
 }
 
+static bool maybe_invert(const __u8 invert, bool result)
+{
+    return invert ? !result : result;
+}
+
 static bool ipv4opt_mt(const struct sk_buff *skb, struct xt_action_param *params)
 {
     // Dump source and destination IP addresses
@@ -71,21 +76,20 @@ static bool ipv4opt_mt(const struct sk_buff *skb, struct xt_action_param *params
 
     struct info_ipv4opt *info = (struct info_ipv4opt *)params->matchinfo;
 
-    //[TODO] add condition of iterating up to maximum length of IP options, avoid infinite loop
+    // [TODO] Check if the part of IP options of the packet is valid by validation function
+
     while (opt_tlv != end_opt_tlv && opt_tlv != limit_ip_header)
     {
         printk(KERN_INFO "Option type: %d\n", opt_tlv->type);
         printk(KERN_INFO "Option length: %d\n", opt_tlv->length);
-        if (info->ipv4optmask & get_mask(opt_tlv->type))
+        if ((info->ipv4optmask & get_mask(opt_tlv->type)) && !info->soft)
         {
             printk(KERN_INFO "Matched\n");
+            return maybe_invert(info->invert, NF_ACCEPT);
         }
         opt_tlv = get_next_option(opt_tlv);
     }
-
-    // params->hotdrop = 1;
-
-    return NF_DROP;
+    return maybe_invert(info->invert, NF_DROP);
 }
 
 struct xt_match ipv4opt_mt_reg __read_mostly = {

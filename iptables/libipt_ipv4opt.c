@@ -106,7 +106,6 @@ static void ipv4opt_parse(struct xt_option_call* cb)
         case XTTYPE_IPV4OPT:
             info->ipv4optmask = parseopt(cb->arg);
             info->invert = (cb->invert) ? 1 : 0;
-            printf("mask: %d\n", info->ipv4optmask);
             break;
         case XTTYPE_SOFT:
             info->soft = 1;
@@ -130,8 +129,11 @@ static void ipv4opt_print(const void *ip, const struct xt_entry_match *match, in
 {
     const struct info_ipv4opt *info = (const struct info_ipv4opt *)match->data;
     printf("ipv4opt match options:");
+    if(info->invert){
+        printf(" ! ");
+    }
     if(info->ipv4optmask){
-        printf("--opttype ");
+        printf(" --opttype ");
         for(int i = 0; i < sizeof(numtomask)/sizeof(numtomask[0]); i++){
             if(info->ipv4optmask & numtomask[i].mask){
                 printf("%s,", ipopts[i].name);
@@ -139,7 +141,7 @@ static void ipv4opt_print(const void *ip, const struct xt_entry_match *match, in
         }
     }
     if(info->soft){
-        printf("--soft\n");
+        printf(" --soft\n");
     }
 }
 
