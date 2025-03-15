@@ -32,59 +32,38 @@ static const struct ipopt ipopts[] = {
     {"137", IPOPT_SSRR}
 };
 
-//Map the type number to the corresponding mask
-static const struct numtomask numtomask[] = {
-    {IPOPT_EOL, MASK_IP4OPT_EOL},
-    {IPOPT_NOP, MASK_IP4OPT_NOP},
-    {IPOPT_RR, MASK_IP4OPT_RR},
-    {IPOPT_RA, MASK_IP4OPT_RA},
-    {IPOPT_TS, MASK_IP4OPT_TS},
-    {IPOPT_SEC, MASK_IP4OPT_SEC},
-    {IPOPT_LSRR, MASK_IP4OPT_LSRR},
-    {IPOPT_SSRR, MASK_IP4OPT_SSRR}
-};
-
+const enum { NON_DEFINED_OPT = 0x0100 };
 
 //Convert the cmd representation of the options to the corresponding type number
-static u_int8_t gettypenum(const char* name){
+static u_int16_t gettypenum(const char* name){
     for(int i = 0; i < sizeof(ipopts)/sizeof(ipopts[0]); i++){
         if(strcmp(ipopts[i].name, name) == 0){
             return ipopts[i].typenum;
         }
     }
-
-    return 0;
-}
-
-//Convert the type number to the corresponding mask
-static u_int16_t getmask(u_int8_t typenum){
-    for(int i = 0; i < sizeof(numtomask)/sizeof(numtomask[0]); i++){
-        if(numtomask[i].typenum == typenum){
-            return numtomask[i].mask;
-        }
-    }
-    return 0;
+    return NON_DEFINED_OPT;
 }
 
 //parse cmd options
-static u_int16_t parseopt(const char* opttype){
-    u_int16_t mask = 0;
+static __u8 get_type_list(__u8* type_list, const char* opttype){
     char* buffer = xtables_strdup(opttype);
     char* token = strtok(buffer, ",");
+    
     if (token == NULL){
         xtables_error(PARAMETER_PROBLEM, "No option specified or options in wrong format");
     }
+
+    __u8 num_ip4opt = 0;
     for(; token != NULL; token = strtok(NULL, ",")){
-        u_int8_t typenum = gettypenum(token);
-        if(typenum == 0){
-            //xtables_error(PARAMETER_PROBLEM, "Invalid option specified");
+        u_int16_t typenum = gettypenum(token);
+        if(typenum == NON_DEFINED_OPT){
+            xtables_error(PARAMETER_PROBLEM, "Invalid option specified");
         }
-        mask |= getmask(typenum);
+        type_list[num_ip4opt] = (__u8) typenum;
+        num_ip4opt++;
     }
     
-    
-    
-    return mask;
+    return num_ip4opt;
 }
 
 static void ipv4opt_help(void)
@@ -104,7 +83,7 @@ static void ipv4opt_parse(struct xt_option_call* cb)
 
     switch(cb->entry->id){
         case XTTYPE_IPV4OPT:
-            info->ipv4optmask = parseopt(cb->arg);
+            info->num_ip4opt = get_type_list(info->type_list, cb->arg);
             info->invert = (cb->invert) ? 1 : 0;
             break;
         case XTTYPE_SOFT:
@@ -132,16 +111,14 @@ static void ipv4opt_print(const void *ip, const struct xt_entry_match *match, in
     if(info->invert){
         printf(" ! ");
     }
-    if(info->ipv4optmask){
+    if(info->num_ip4opt > 0){
         printf(" --opttype ");
-        for(int i = 0; i < sizeof(numtomask)/sizeof(numtomask[0]); i++){
-            if(info->ipv4optmask & numtomask[i].mask){
-                printf("%s,", ipopts[i].name);
-            }
+        for(int i = 0; i < info->num_ip4opt; i++){
+            printf("%d,", info->type_list[i]);
         }
     }
     if(info->soft){
-        printf(" --soft\n");
+        printf(" --soft");
     }
 }
 

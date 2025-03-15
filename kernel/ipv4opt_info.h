@@ -3,22 +3,13 @@
 
 #include <linux/types.h>
 
+#define MAX_NUM_IP4OPT 40
+
 struct info_ipv4opt{
-    __u16 ipv4optmask;
+    __u8 type_list[MAX_NUM_IP4OPT];
+    __u8 num_ip4opt;
     __u8 soft;
     __u8 invert;
 };
-
-
-#define MASK_TYPE           __u16
-
-#define MASK_IP4OPT_EOL     0x0001
-#define MASK_IP4OPT_NOP     0x0002
-#define MASK_IP4OPT_RR      0x0004
-#define MASK_IP4OPT_RA      0x0008 
-#define MASK_IP4OPT_TS      0x0010
-#define MASK_IP4OPT_SEC     0x0020
-#define MASK_IP4OPT_LSRR    0x0040
-#define MASK_IP4OPT_SSRR    0x0080
 
 #endif

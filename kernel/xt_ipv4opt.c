@@ -23,29 +23,6 @@ struct numtomask
     uint16_t mask;
 };
 
-// Map the type number to the corresponding mask
-static const struct numtomask numtomask[] = {
-    {IPOPT_EOL, MASK_IP4OPT_EOL},
-    {IPOPT_NOP, MASK_IP4OPT_NOP},
-    {IPOPT_RR, MASK_IP4OPT_RR},
-    {IPOPT_RA, MASK_IP4OPT_RA},
-    {IPOPT_TS, MASK_IP4OPT_TS},
-    {IPOPT_SEC, MASK_IP4OPT_SEC},
-    {IPOPT_LSRR, MASK_IP4OPT_LSRR},
-    {IPOPT_SSRR, MASK_IP4OPT_SSRR}};
-
-static MASK_TYPE get_mask(const __u8 type)
-{
-    for (int i = 0; i < sizeof(numtomask) / sizeof(numtomask[0]); i++)
-    {
-        if (numtomask[i].typenum == type)
-        {
-            return numtomask[i].mask;
-        }
-    }
-    return 0;
-}
-
 static struct ip_opt_tlv *get_next_option(const struct ip_opt_tlv *ipopt_tlv)
 {
 
@@ -63,6 +40,57 @@ static bool maybe_invert(const __u8 invert, bool result)
     return invert ? !result : result;
 }
 
+static bool check_ipv4_options_exist(struct ip_opt_tlv *opt_tlv, struct ip_opt_tlv *end_opt_tlv, struct ip_opt_tlv* limit_ip_header, struct info_ipv4opt *info)
+{
+    int num_of_matched_ipv4opts = 0;
+    int num_of_ip4opt = 0;
+    while (opt_tlv != end_opt_tlv && num_of_ip4opt != MAX_NUM_IP4OPT)
+    {
+        if(opt_tlv == end_opt_tlv){
+            return maybe_invert(info->invert, NF_DROP);
+        }
+        num_of_ip4opt++;    
+        // check if the option type is in the list
+        for(int i=0; i< info->num_ip4opt; i++){
+            if ((opt_tlv->type) == info->type_list[i])
+            {
+                num_of_matched_ipv4opts++;
+                printk(KERN_INFO "Soft: Option type: %d\n", opt_tlv->type);
+                printk(KERN_INFO "Soft: Option length: %d\n", opt_tlv->length);
+                break;
+            }
+        }
+        opt_tlv = get_next_option(opt_tlv);
+    }
+
+    if(num_of_matched_ipv4opts == info->num_ip4opt){
+        return maybe_invert(info->invert, NF_ACCEPT);
+    }    
+    return maybe_invert(info->invert, NF_DROP);
+
+}
+
+static bool check_ipv4_options_sequence(struct ip_opt_tlv *opt_tlv, struct ip_opt_tlv *end_opt_tlv, struct info_ipv4opt *info)
+{
+
+    for (int i = 0; i < info->num_ip4opt; i++)
+    {
+        if(opt_tlv == end_opt_tlv){
+            return maybe_invert(info->invert, NF_DROP);
+        }
+
+        if ((opt_tlv->type) != info->type_list[i])
+        {
+            return maybe_invert(info->invert, NF_DROP);
+        }
+        printk(KERN_INFO "Option type: %d\n", opt_tlv->type);
+        printk(KERN_INFO "Option length: %d\n", opt_tlv->length);
+        opt_tlv = get_next_option(opt_tlv);
+    }
+
+    return maybe_invert(info->invert, NF_ACCEPT);
+}
+
 static bool ipv4opt_mt(const struct sk_buff *skb, struct xt_action_param *params)
 {
     // Dump source and destination IP addresses
@@ -78,18 +106,17 @@ static bool ipv4opt_mt(const struct sk_buff *skb, struct xt_action_param *params
 
     // [TODO] Check if the part of IP options of the packet is valid by validation function
 
-    while (opt_tlv != end_opt_tlv && opt_tlv != limit_ip_header)
-    {
-        printk(KERN_INFO "Option type: %d\n", opt_tlv->type);
-        printk(KERN_INFO "Option length: %d\n", opt_tlv->length);
-        if ((info->ipv4optmask & get_mask(opt_tlv->type)) && !info->soft)
-        {
-            printk(KERN_INFO "Matched\n");
-            return maybe_invert(info->invert, NF_ACCEPT);
-        }
-        opt_tlv = get_next_option(opt_tlv);
+    if(opt_tlv == end_opt_tlv){
+        return maybe_invert(info->invert, NF_DROP);
     }
-    return maybe_invert(info->invert, NF_DROP);
+
+    if(!info->soft){
+        return check_ipv4_options_sequence(opt_tlv, end_opt_tlv, info);    
+    } else {
+        return check_ipv4_options_exist(opt_tlv, end_opt_tlv, limit_ip_header, info);
+    }
+
+    return maybe_invert(info->invert, NF_ACCEPT);
 }
 
 struct xt_match ipv4opt_mt_reg __read_mostly = {
