@@ -1,5 +1,5 @@
 #include<xtables.h>
-#include"../kernel/ipv4opt_info.h"
+#include<kernel/ipv4opt_info.h>
 #include<netinet/ip.h>
 #include<stdio.h>
 #include<string.h>
