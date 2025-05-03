@@ -1,3 +1,4 @@
+OUTPUT_DIR := $(CURDIR)/build
 ifneq ($(KERNELRELEASE),)
 # kbuild part of makefile
 obj-m  := xt_ipv4option.o

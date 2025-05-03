@@ -32,7 +32,7 @@ static const struct ipopt ipopts[] = {
     {"137", IPOPT_SSRR}
 };
 
-const enum { NON_DEFINED_OPT = 0x0100 };
+const enum { NON_DEFINED_OPT = 0x0100 } non_defined_opt;
 
 //Convert the cmd representation of the options to the corresponding type number
 static u_int16_t gettypenum(const char* name){
